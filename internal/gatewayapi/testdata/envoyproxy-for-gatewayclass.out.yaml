@@ -49,6 +49,14 @@ envoyProxyForGatewayClass:
           - type: File
           - type: ALS
           - type: OpenTelemetry
+      tracing:
+        customTags:
+          team:
+            literal:
+              value: gateway
+            type: Literal
+        provider:
+          host: tracing.example.com
   status:
     ancestors:
     - ancestorRef:
@@ -63,6 +71,13 @@ envoyProxyForGatewayClass:
         reason: InvalidParameters
         status: "False"
         type: Accepted
+      - lastTransitionTime: null
+        message: spec.telemetry.tracing.customTags is deprecated, use spec.telemetry.tracing.tags
+          instead; spec.telemetry.tracing.provider.host is deprecated, use spec.telemetry.tracing.provider.backendRefs
+          instead
+        reason: DeprecatedField
+        status: "True"
+        type: Warning
 gatewayClass:
   apiVersion: gateway.networking.k8s.io/v1
   kind: GatewayClass
@@ -84,6 +99,13 @@ gatewayClass:
       reason: InvalidParameters
       status: "False"
       type: Accepted
+    - lastTransitionTime: null
+      message: spec.telemetry.tracing.customTags is deprecated, use spec.telemetry.tracing.tags
+        instead; spec.telemetry.tracing.provider.host is deprecated, use spec.telemetry.tracing.provider.backendRefs
+        instead
+      reason: DeprecatedField
+      status: "True"
+      type: Warning
 gateways:
 - apiVersion: gateway.networking.k8s.io/v1
   kind: Gateway
