@@ -21,6 +21,14 @@ import (
 const (
 	ReasonOlderGatewayClassExists gwapiv1.GatewayClassConditionReason = "OlderGatewayClassExists"
 
+	// GatewayClassConditionWarning is a condition type added to GatewayClass status when the
+	// referenced EnvoyProxy uses deprecated fields that need to be migrated.
+	GatewayClassConditionWarning gwapiv1.GatewayClassConditionType = "Warning"
+
+	// GatewayClassReasonDeprecatedField is the reason used with GatewayClassConditionWarning
+	// when deprecated fields are detected in the referenced EnvoyProxy.
+	GatewayClassReasonDeprecatedField gwapiv1.GatewayClassConditionReason = "DeprecatedField"
+
 	MsgOlderGatewayClassExists   = "Invalid GatewayClass: another older GatewayClass with the same Spec.Controller exists"
 	MsgValidGatewayClass         = "Valid GatewayClass"
 	MsgGatewayClassInvalidParams = "Invalid parametersRef"
@@ -34,6 +42,24 @@ func SetGatewayClassAccepted(gc *gwapiv1.GatewayClass, accepted bool, reason, ms
 	// status failures due to changes in the datatype. This can occur because we cannot control
 	// how a CRD is installed in the cluster
 	// gc.Status.SupportedFeatures = GatewaySupportedFeatures
+}
+
+// SetGatewayClassDeprecatedFields inserts or updates a Warning condition on the GatewayClass
+// when the referenced EnvoyProxy uses deprecated fields.
+// It is a no-op when gc is nil or deprecatedFields is empty.
+func SetGatewayClassDeprecatedFields(gc *gwapiv1.GatewayClass, deprecatedFields map[string]string) {
+	if gc == nil || len(deprecatedFields) == 0 {
+		return
+	}
+	msg := buildEnvoyProxyDeprecationMessage(deprecatedFields)
+	cond := metav1.Condition{
+		Type:               string(GatewayClassConditionWarning),
+		Status:             metav1.ConditionTrue,
+		Reason:             string(GatewayClassReasonDeprecatedField),
+		Message:            truncateConditionMessage(msg),
+		ObservedGeneration: gc.Generation,
+	}
+	gc.Status.Conditions = MergeConditions(gc.Status.Conditions, cond)
 }
 
 // computeGatewayClassAcceptedCondition computes the GatewayClass Accepted status condition.

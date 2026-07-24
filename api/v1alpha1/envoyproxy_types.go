@@ -675,6 +675,10 @@ type EnvoyProxyConditionType string
 
 const (
 	EnvoyProxyConditionAccepted EnvoyProxyConditionType = "Accepted"
+
+	// EnvoyProxyConditionWarning indicates that the EnvoyProxy configuration contains
+	// non-critical issues that are accepted but require attention.
+	EnvoyProxyConditionWarning EnvoyProxyConditionType = "Warning"
 )
 
 type EnvoyProxyConditionReason string
@@ -683,6 +687,10 @@ const (
 	EnvoyProxyReasonAccepted EnvoyProxyConditionReason = "Accepted"
 
 	EnvoyProxyReasonInvalidParameters EnvoyProxyConditionReason = "InvalidParameters"
+
+	// EnvoyProxyReasonDeprecatedField is used with the "Warning" condition when the EnvoyProxy
+	// uses deprecated fields that should be migrated to newer alternatives.
+	EnvoyProxyReasonDeprecatedField EnvoyProxyConditionReason = "DeprecatedField"
 )
 
 // +kubebuilder:object:root=true

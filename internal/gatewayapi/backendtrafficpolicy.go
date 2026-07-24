@@ -209,6 +209,19 @@ func deprecatedFieldsUsedInBackendTrafficPolicy(policy *egv1a1.BackendTrafficPol
 	if len(policy.Spec.Compression) > 0 {
 		deprecatedFields["spec.compression"] = "spec.compressor"
 	}
+	if policy.Spec.RateLimit != nil && policy.Spec.RateLimit.Type != nil {
+		deprecatedFields["spec.rateLimit.type"] = "spec.rateLimit.global and/or spec.rateLimit.local"
+	}
+	if lb := policy.Spec.LoadBalancer; lb != nil {
+		if ch := lb.ConsistentHash; ch != nil && ch.Header != nil {
+			deprecatedFields["spec.loadBalancer.consistentHash.header"] = "spec.loadBalancer.consistentHash.headers"
+		}
+	}
+	if telemetry := policy.Spec.Telemetry; telemetry != nil {
+		if tracing := telemetry.Tracing; tracing != nil && len(tracing.CustomTags) > 0 {
+			deprecatedFields["spec.telemetry.tracing.customTags"] = "spec.telemetry.tracing.tags"
+		}
+	}
 	return deprecatedFields
 }
 

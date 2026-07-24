@@ -66,3 +66,26 @@ func TestComputeGatewayClassAcceptedCondition(t *testing.T) {
 		assert.Equal(t, gc.Generation, got.ObservedGeneration)
 	}
 }
+
+func TestSetGatewayClassDeprecatedFieldsWarning(t *testing.T) {
+	gc := &gwapiv1.GatewayClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 3,
+		},
+	}
+	SetGatewayClassDeprecatedFields(gc, map[string]string{
+		"spec.telemetry.tracing.customTags": "spec.telemetry.tracing.tags",
+	})
+
+	if assert.Len(t, gc.Status.Conditions, 1) {
+		cond := gc.Status.Conditions[0]
+		assert.Equal(t, string(GatewayClassConditionWarning), cond.Type)
+		assert.Equal(t, metav1.ConditionTrue, cond.Status)
+		assert.Equal(t, string(GatewayClassReasonDeprecatedField), cond.Reason)
+		assert.Equal(t, int64(3), cond.ObservedGeneration)
+		assert.Equal(t,
+			"spec.telemetry.tracing.customTags is deprecated, use spec.telemetry.tracing.tags instead",
+			cond.Message,
+		)
+	}
+}

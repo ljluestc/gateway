@@ -28,6 +28,14 @@ envoyProxyForGatewayClass:
               - type: File
               - type: ALS
               - type: OpenTelemetry
+      tracing:
+        provider:
+          host: tracing.example.com
+        customTags:
+          team:
+            type: Literal
+            literal:
+              value: gateway
 envoyProxiesForGateways:
   - apiVersion: gateway.envoyproxy.io/v1alpha1
     kind: EnvoyProxy

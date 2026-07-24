@@ -463,6 +463,16 @@ func (t *Translator) GetRelevantGateways(resources *resource.Resources) (
 			status.UpdateEnvoyProxyStatusAccepted(ep, ancestor,
 				egv1a1.EnvoyProxyReasonAccepted, "EnvoyProxy has been accepted.")
 		}
+
+		if deprecatedFields := deprecatedFieldsUsedInEnvoyProxy(ep); len(deprecatedFields) > 0 {
+			// Surface deprecated fields on the EnvoyProxy status for every ancestor that owns it.
+			status.UpdateEnvoyProxyStatusDeprecatedFields(ep, ancestor, deprecatedFields)
+			// Also surface the warning on the GatewayClass status so operators can see it
+			// when inspecting the GatewayClass that references this EnvoyProxy.
+			if resources.GatewayClass != nil {
+				status.SetGatewayClassDeprecatedFields(resources.GatewayClass, deprecatedFields)
+			}
+		}
 	}
 
 	for _, gateway := range resources.Gateways {
@@ -530,6 +540,10 @@ func (t *Translator) GetRelevantGateways(resources *resource.Resources) (
 			if gCtx.envoyProxyFromGateway {
 				status.UpdateEnvoyProxyStatusAccepted(ep, ancestor,
 					egv1a1.EnvoyProxyReasonAccepted, "EnvoyProxy has been accepted.")
+				// Highlight any deprecated fields in use on the EnvoyProxy status.
+				if deprecatedFields := deprecatedFieldsUsedInEnvoyProxy(ep); len(deprecatedFields) > 0 {
+					status.UpdateEnvoyProxyStatusDeprecatedFields(ep, ancestor, deprecatedFields)
+				}
 			}
 		}
 
