@@ -167,8 +167,10 @@ func TestEnvoyEndpointNodeNamesForService(t *testing.T) {
 
 func Test_mergeRouteParentStatus(t *testing.T) {
 	type args struct {
-		old []gwapiv1.RouteParentStatus
-		new []gwapiv1.RouteParentStatus
+		// parentRefs are the route spec parentRefs. If nil, all parentRefs in old and new are used.
+		parentRefs []gwapiv1.ParentReference
+		old        []gwapiv1.RouteParentStatus
+		new        []gwapiv1.RouteParentStatus
 	}
 	tests := []struct {
 		name string
@@ -1030,10 +1032,145 @@ func Test_mergeRouteParentStatus(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "old contains a parentRef of ours that is no longer in the route spec, e.g. route recreated with the same name.",
+			args: args{
+				parentRefs: []gwapiv1.ParentReference{
+					{
+						Name:      "httproute-listener-port-matching",
+						Namespace: new(gwapiv1.Namespace("default")),
+						Port:      new(gwapiv1.PortNumber(80)),
+					},
+				},
+				old: []gwapiv1.RouteParentStatus{
+					{
+						ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+						ParentRef: gwapiv1.ParentReference{
+							Name:      "httproute-listener-hostname-matching",
+							Namespace: new(gwapiv1.Namespace("default")),
+						},
+						Conditions: []metav1.Condition{
+							{
+								Type:   string(gwapiv1.RouteConditionAccepted),
+								Status: metav1.ConditionTrue,
+								Reason: "Accepted",
+							},
+						},
+					},
+				},
+				new: []gwapiv1.RouteParentStatus{
+					{
+						ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+						ParentRef: gwapiv1.ParentReference{
+							Name:      "httproute-listener-port-matching",
+							Namespace: new(gwapiv1.Namespace("default")),
+							Port:      new(gwapiv1.PortNumber(80)),
+						},
+						Conditions: []metav1.Condition{
+							{
+								Type:   string(gwapiv1.RouteConditionAccepted),
+								Status: metav1.ConditionTrue,
+								Reason: "Accepted",
+							},
+						},
+					},
+				},
+			},
+			want: []gwapiv1.RouteParentStatus{
+				{
+					ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+					ParentRef: gwapiv1.ParentReference{
+						Name:      "httproute-listener-port-matching",
+						Namespace: new(gwapiv1.Namespace("default")),
+						Port:      new(gwapiv1.PortNumber(80)),
+					},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(gwapiv1.RouteConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "Accepted",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "new contains a stale parentRef of ours that is not in the route spec, e.g. pending update for a deleted route.",
+			args: args{
+				parentRefs: []gwapiv1.ParentReference{
+					{
+						Name: "gateway2",
+					},
+				},
+				old: []gwapiv1.RouteParentStatus{},
+				new: []gwapiv1.RouteParentStatus{
+					{
+						ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+						ParentRef: gwapiv1.ParentReference{
+							Name: "gateway1",
+						},
+						Conditions: []metav1.Condition{
+							{
+								Type:   string(gwapiv1.RouteConditionAccepted),
+								Status: metav1.ConditionTrue,
+								Reason: "Accepted",
+							},
+						},
+					},
+				},
+			},
+			want: []gwapiv1.RouteParentStatus{},
+		},
+		{
+			name: "old contains a parentRef of another controller's that is not in the route spec, it is kept.",
+			args: args{
+				parentRefs: []gwapiv1.ParentReference{
+					{
+						Name: "gateway2",
+					},
+				},
+				old: []gwapiv1.RouteParentStatus{
+					{
+						ControllerName: "istio.io/gateway-controller",
+						ParentRef: gwapiv1.ParentReference{
+							Name: "gateway1",
+						},
+					},
+				},
+				new: []gwapiv1.RouteParentStatus{
+					{
+						ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+						ParentRef: gwapiv1.ParentReference{
+							Name: "gateway2",
+						},
+					},
+				},
+			},
+			want: []gwapiv1.RouteParentStatus{
+				{
+					ControllerName: "istio.io/gateway-controller",
+					ParentRef: gwapiv1.ParentReference{
+						Name: "gateway1",
+					},
+				},
+				{
+					ControllerName: "gateway.envoyproxy.io/gatewayclass-controller",
+					ParentRef: gwapiv1.ParentReference{
+						Name: "gateway2",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := mergeRouteParentStatus("default", tt.args.old, tt.args.new); !reflect.DeepEqual(got, tt.want) {
+			parentRefs := tt.args.parentRefs
+			if parentRefs == nil {
+				for _, p := range append(tt.args.old, tt.args.new...) {
+					parentRefs = append(parentRefs, p.ParentRef)
+				}
+			}
+			if got := mergeRouteParentStatus("default", "gateway.envoyproxy.io/gatewayclass-controller", parentRefs, tt.args.old, tt.args.new); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("mergeRouteParentStatus() = %v, want %v", got, tt.want)
 			}
 		})
